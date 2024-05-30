@@ -1,0 +1,191 @@
+<html>
+    <head>
+        <title>Forza Horizon 5 Map</title>
+        <meta name="description" content="Realtime map for Forza Horizon 5">
+        <meta name="keywords" content="Forza, Horizon, FH5, Map, Forza Horizon 5, telemetry">
+        <meta name="author" content="Brett Adams">
+        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-EW032TKLN6"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-EW032TKLN6');
+        </script>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: black;
+            }
+            a, a:hover, a:visited, a:active {
+                color: inherit;
+            }
+            #map {
+                background-image: url('map.jpg');
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+                background-size: auto;
+                width: 100%;
+                height: 100%;
+                position: absolute;
+                left:0;
+                top:0;
+                overflow: hidden;
+            }
+            #text {
+                font-family: monospace;
+                position: absolute;
+                left:0;
+                bottom:0;
+                padding: 0.5em;
+                background-color: rgba(0, 0, 0, 0.5);
+                color: white;
+            }
+            .otherarrows {
+                position: absolute;
+                height: 24px;
+                width: 24px;
+            }
+            #help {
+                position: absolute;
+                left:0;
+                right:0;
+                top:0;
+                bottom:0;
+                margin: auto;
+                height: 22em;
+                width: 80%;
+                background-color: rgba(255, 255, 255, 0.9);
+                border: 2px solid black;
+                padding: 1em;
+                font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+                text-align: center;
+                overflow: hidden;
+            }
+            #close {
+                position: absolute;
+                top:0;
+                right:0;
+                padding: 0.5em;
+            }
+        </style>
+
+    </head>
+    <body>
+        <div id="app">
+            <div id="map" :style="map()">
+                <svg v-for="car,id in cars" class="otherarrows" viewBox="0 0 24 24" :style="position(car)" :id="id">
+                    <path v-if="id == 'GYSnVQlloFNfdImFRmJg+Q=='" fill="rgb(0,128,255)" stroke="white" d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/>
+                    <path v-else :fill="`rgb(${255-Math.min(car.s,100)*2.5},${Math.min(car.s,100)*2.5},0)`" stroke="black" d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/>
+                </svg>
+            </div>
+            <div id="text">forzamap.online<br>
+                {{Object.keys(cars).length}} cars on the map<br>
+                {{Math.round(viewz*100)/100}}x zoom<br>
+                <a href="https://twitter.com/Bre77">Created by @Bre77</a>
+            </div>
+        </div>
+        <script>
+            const imagex = 3840
+            const imagey = 2160
+            const factorx = -5.0475
+            const offsetx = -391
+            const factory = 5.0475
+            const offsety = - 92
+            const zoom = 1.1
+            var previousEvent
+
+            const app = new Vue({
+                el: '#app',
+                data: {
+                    cars: {},
+                    playerx: 0,
+                    playery: 0,
+                    viewx: 0,
+                    viewy: 0,
+                    viewz: 1,
+                    imagex: 3840,
+                    imagey: 2160,
+                },
+                created() {
+                    window.addEventListener('wheel', this.onwheel);
+                    window.addEventListener('mousedown', this.draggable);
+                    const stream = new EventSource("/data")
+                    stream.onmessage = function(ev){
+                        try {
+                            data = JSON.parse(ev.data)
+                        }
+                        catch(err) {
+                            return
+                        }
+                        app.$set(app.cars,data[0],{x:data[1],y:data[2],d:data[3],s:data[4],t:Date.now()})
+                    };
+                    setInterval(()=>{
+                        const n = Date.now()-30000
+                        for(const id in app.cars){
+                            if(app.cars[id].t < n){
+                                app.$delete(app.cars,id)
+                            }
+                        }
+                    },1000)
+                },
+                destroyed() {
+                    window.removeEventListener("wheel", this.onwheel);
+                    window.removeEventListener("mousedown", this.draggable);
+                },
+                methods: {
+                    map() {
+                        let x = this.viewx + (window.innerWidth-(this.imagex * this.viewz))/2
+                        let y = this.viewy + (window.innerHeight-(this.imagey * this.viewz))/2
+                        return {'background-position': x+'px '+y+'px','background-size': (this.imagex * this.viewz)+'px '+(this.imagey * this.viewz)+'px'}
+                    },
+                    position(car){
+                        let x = window.innerWidth/2 - ((car.x/factorx) + offsetx) * this.viewz + this.viewx - 12
+                        let y = window.innerHeight/2 - ((car.y/factory) + offsety) * this.viewz + this.viewy - 12
+                        if(x < -12 || y < -12 || x > window.innerWidth + 12 || y > window.innerHeight + 12){
+                            return {visibility: 'hidden'}
+                        }
+                        return {transform: 'rotate('+car.d+'rad)', left: x+'px', top: y+'px' }
+                    },
+                    draggable(e) {
+                        e.preventDefault();
+                        previousEvent = e;
+                        document.addEventListener('mousemove', this.drag);
+                        document.addEventListener('mouseup', this.removeDrag);
+                    },
+                    drag(e) {
+                        e.preventDefault();
+                        this.viewx += (e.pageX - previousEvent.pageX);
+                        this.viewy += (e.pageY - previousEvent.pageY);
+                        previousEvent = e;
+                    },
+                    removeDrag() {
+                        document.removeEventListener('mouseup', this.removeDrag);
+                        document.removeEventListener('mousemove', this.drag);
+                    },
+                    onwheel(e) {
+			            var deltaY = 0;
+
+                        if (e.deltaY) { // FireFox 17+ (IE9+, Chrome 31+?)
+                            deltaY = e.deltaY;
+                        } else if (e.wheelDelta) {
+                            deltaY = -e.wheelDelta;
+                        }
+
+                        // Update the bg size:
+                        if (deltaY < 0) {
+                            this.viewz *= zoom
+                            this.viewx *= zoom
+                            this.viewy *= zoom
+                        } else {
+                            this.viewz /= zoom
+                            this.viewx /= zoom
+                            this.viewy /= zoom
+                        }
+                    }
+                }
+            })
+        </script>
+    </body>
+</html>

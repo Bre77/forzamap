@@ -1,0 +1,202 @@
+<html>
+    <head>
+        <title>Forza Horizon 5 Map</title>
+        <meta name="description" content="Realtime map for Forza Horizon 5">
+        <meta name="keywords" content="Forza, Horizon, FH5, Map, Forza Horizon 5, telemetry">
+        <meta name="author" content="Brett Adams">
+        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+        <script src="/uid.js"></script>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-EW032TKLN6"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-EW032TKLN6');
+        </script>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: black;
+            }
+            a, a:hover, a:visited, a:active {
+                color: inherit;
+            }
+            #map {
+                background-image: url('map.jpg');
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+                background-size: auto;
+                width: 100%;
+                height: 100%;
+                position: absolute;
+                left:0;
+                top:0;
+                overflow: hidden;
+            }
+            #text {
+                font-family: monospace;
+                position: absolute;
+                left:0;
+                bottom:0;
+                padding: 0.5em;
+                background-color: rgba(0, 0, 0, 0.5);
+                color: white;
+            }
+            #mainarrow {
+                position: absolute;
+                left:0;
+                right:0;
+                top:0;
+                bottom:0;
+                margin: auto;
+                height: 24px;
+                width: 24px;
+                /*border: -5px, -5px;*/
+            }
+            .otherarrows {
+                position: absolute;
+                height: 24px;
+                width: 24px;
+                /*border: -5px, -5px;*/
+            }
+            #help {
+                position: absolute;
+                left:0;
+                right:0;
+                top:0;
+                bottom:0;
+                margin: auto;
+                height: 22em;
+                width: 80%;
+                background-color: rgba(255, 255, 255, 0.9);
+                border: 2px solid black;
+                padding: 1em;
+                font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+                text-align: center;
+                overflow: hidden;
+            }
+            #close {
+                position: absolute;
+                top:0;
+                right:0;
+                padding: 0.5em;
+            }
+        </style>
+
+    </head>
+    <body>
+        <div id="app">
+            <div id="map" :style="{'background-position': mapx+'px '+mapy+'px'}">
+                <svg v-for="car,id in cars" class="otherarrows" viewBox="0 0 24 24" :style="position(car)" :id="id">
+                    <path v-if="id == 'GYSnVQlloFNfdImFRmJg+Q=='" :fill="rgb(0,0,255)" stroke="white" d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/>
+                    <path v-else :fill="`rgb(${255-Math.min(car.s,100)*2.5},${Math.min(car.s,100)*2.5},0)`" stroke="black" d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/>
+                </svg>
+                <svg v-if="seen" id="mainarrow" viewBox="0 0 24 24" :style="{transform: 'rotate('+d+'rad)'}">
+                    <path :fill="`rgb(${255-Math.min(s,100)*2.5},${255-Math.min(s,100)*2.5},255)`" stroke="black" d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/>
+                </svg>
+                </template>
+            </div>
+            <div id="text">forzamap.online<br>
+                {{Object.keys(cars).length+seen}} cars on the map<br>
+                X {{Math.round(x*1000)/1000}} m<br>
+                Y {{Math.round(y*1000)/1000}} m<br>
+                D {{Math.round(d*1000)/1000}} rads<br>
+                S {{Math.round(s*1000)/1000}} m/s<br>
+                <a href="https://twitter.com/Bre77">Created by @Bre77</a>
+            </div>
+            
+            <div id="help" v-if="!seen && !help">
+                <h1>Welcome</h1>
+                Data sent to this services is <u>public</u>, but your IP address will be hashed for privacy. You may see other cars on your map.<br><br>
+                To join, in Forza Horizon 5, go to <b>SETTINGS</b>, then <b>HUD AND GAMEPLAY</b>, then at the bottom set the following:<br><br>
+                <img src="/config.png" title="DATA OUT IP ADDRESS = forzamap.online   DATA OUT IP PORT = 5555" alt="Set DATA OUT IP ADDRESS to 'forzamap.online', set DATA OUT IP PORT to '5555'"><br><br>
+                You must open this website from the same Public IP address as the game. This box will close once data has been received from your IP.<br>
+                This website can consume a very large amount of data, so be cautious using it on a metered connection.<br>
+                <a href="/viewer.htm">Go to Spectator Mode</a>
+                <div id="close" @click="help=1">Close X</div>
+            </div>
+        </div>
+        <script>
+            const imagex = 3840
+            const imagey = 2160
+            const factorx = -5.0475
+            const offsetx = -391
+            const factory = 5.0475
+            const offsety = - 92
+
+            const app = new Vue({
+                el: '#app',
+                data: {
+                    uid: uid,
+                    cars: {},
+                    seen: 0,
+                    help: 0,
+                    x: -1500,
+                    y: 750,
+                    d: 0,
+                    s: 0,
+                    mapx: 0,
+                    mapy: 0,
+                    middleoffsetx: (window.innerWidth-imagex)/2,
+                    middleoffsety: (window.innerHeight-imagey)/2
+                },
+                created() {
+                    this.move()
+                    window.addEventListener("resize", this.resize);
+                    const stream = new EventSource("/data")
+                    stream.onmessage = function(ev){
+                        try {
+                            data = JSON.parse(ev.data)
+                        }
+                        catch(err) {
+                            return
+                        }
+                        
+                        if(data[0] == app.uid){
+                            app.x = data[1]
+                            app.y = data[2]
+                            app.d = data[3]
+                            app.s = data[4]
+                            app.seen = 1
+                            app.move()
+                        } else {
+                            app.$set(app.cars,data[0],{x:data[1],y:data[2],d:data[3],s:data[4],t:Date.now()})
+                        }
+                    };
+                    setInterval(()=>{
+                        const n = Date.now()-30000
+                        for(const id in app.cars){
+                            if(app.cars[id].t < n){
+                                app.$delete(app.cars,id)
+                            }
+                        }
+                    },1000)
+                },
+                destroyed() {
+                    window.removeEventListener("resize", this.resize);
+                },
+                methods: {
+                    resize() {
+                        this.middleoffsetx = (window.innerWidth-imagex)/2
+                        this.middleoffsety = (window.innerHeight-imagey)/2
+                        this.move()
+                    },
+                    move() {
+                        this.mapx = this.middleoffsetx + (this.x/factorx) + offsetx
+                        this.mapy = this.middleoffsety + (this.y/factory) + offsety
+                    },
+                    position(car){
+                        let x = window.innerWidth/2 - ((car.x-this.x)/factorx) - 12
+                        let y = window.innerHeight/2 - ((car.y-this.y)/factory) - 12
+                        if(x < -12 || y < -12 || x > window.innerWidth + 12 || y > window.innerHeight + 12){
+                            return {visibility: 'hidden'}
+                        }
+                        return {transform: 'rotate('+car.d+'rad)', left: x+'px', top: y+'px' }
+                    }
+                }
+            })
+
+        </script>
+    </body>
+</html>
