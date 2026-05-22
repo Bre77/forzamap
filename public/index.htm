@@ -97,6 +97,43 @@
                 text-transform: uppercase;
                 background: #eee;
             }
+            #calibrate {
+                position: absolute;
+                top: 0;
+                right: 0;
+                padding: 0.5em;
+                background-color: rgba(0, 0, 0, 0.6);
+                color: white;
+                font-family: monospace;
+                font-size: 12px;
+                max-height: 90vh;
+                overflow: auto;
+                z-index: 10;
+            }
+            #calibrate button {
+                margin: 2px;
+                font-family: monospace;
+            }
+            #calibrate table {
+                border-collapse: collapse;
+                margin-top: 4px;
+            }
+            #calibrate td,
+            #calibrate th {
+                border: 1px solid #555;
+                padding: 1px 4px;
+            }
+            .calibrate-dot {
+                position: absolute;
+                width: 8px;
+                height: 8px;
+                margin-left: -4px;
+                margin-top: -4px;
+                background: cyan;
+                border: 1px solid black;
+                border-radius: 50%;
+                pointer-events: none;
+            }
         </style>
     </head>
     <body>
@@ -128,6 +165,64 @@
                         d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"
                     />
                 </svg>
+                <div
+                    v-if="calibrate"
+                    v-for="point,i in calibratePoints"
+                    class="calibrate-dot"
+                    :style="calibrateDotStyle(point)"
+                    :title="`#${i+1} g=(${point.gx.toFixed(1)},${point.gy.toFixed(1)})`"
+                ></div>
+            </div>
+            <div id="calibrate" v-if="calibrate">
+                <b>CALIBRATE</b> ({{calibratePoints.length}} pts)<br />
+                Car:
+                <select v-model="calibrateCarId">
+                    <option :value="null">(auto: my uid)</option>
+                    <option v-for="(c,id) in cars" :value="id">
+                        {{id}}
+                    </option></select
+                ><br />
+                Shift+Click your car's actual map location after driving
+                there.<br />
+                <button
+                    @click="calibratePoints.pop()"
+                    :disabled="!calibratePoints.length"
+                >
+                    Undo
+                </button>
+                <button
+                    @click="calibratePoints=[]"
+                    :disabled="!calibratePoints.length"
+                >
+                    Clear
+                </button>
+                <button @click="calibrate=false">Hide</button>
+                <br />
+                <template v-if="calibrateFit">
+                    <b>Fit:</b><br />
+                    factorx = {{calibrateFit.factorx.toFixed(4)}}<br />
+                    offsetx = {{calibrateFit.offsetx.toFixed(2)}}<br />
+                    factory = {{calibrateFit.factory.toFixed(4)}}<br />
+                    offsety = {{calibrateFit.offsety.toFixed(2)}}<br />
+                    rms err = {{calibrateFit.rms.toFixed(2)}}px<br />
+                </template>
+                <template v-else>Need 2+ points</template>
+                <table v-if="calibratePoints.length">
+                    <tr>
+                        <th>#</th>
+                        <th>gx</th>
+                        <th>gy</th>
+                        <th>ix</th>
+                        <th>iy</th>
+                    </tr>
+                    <tr v-for="p,i in calibratePoints" :key="i">
+                        <td>{{i+1}}</td>
+                        <td>{{p.gx.toFixed(1)}}</td>
+                        <td>{{p.gy.toFixed(1)}}</td>
+                        <td>{{p.ix.toFixed(1)}}</td>
+                        <td>{{p.iy.toFixed(1)}}</td>
+                    </tr>
+                </table>
             </div>
             <div id="text">
                 forza.ba.id.au<br />
@@ -140,7 +235,7 @@
                     S {{player.S}} m/s<br />
                 </template>
             </div>
-            <div id="help" v-if="!seen && !help">
+            <div id="help" v-if="!seen && !help && !calibrate">
                 <h1>Welcome to forza.ba.id.au</h1>
                 Telemetry sent to this services is <u>public</u>, but your IP
                 address will be hashed for privacy. You will see other players
@@ -168,12 +263,12 @@
             </div>
         </div>
         <script>
-            const imagex = 2160;
-            const imagey = 2700;
-            const factorx = -7.69;
-            const offsetx = -73;
-            const factory = 7.61;
-            const offsety = 27;
+            const imagex = 6144;
+            const imagey = 6144;
+            const factorx = -3.5131;
+            const offsetx = -172.55;
+            const factory = 3.512;
+            const offsety = 12.86;
             const zoom = 1.1;
 
             var previousEvent;
@@ -192,6 +287,11 @@
                     help: false,
                     hue: 0,
                     brett: "goCWPwl+URT9ObrAUmvttw==",
+                    calibrate: false,
+                    calibrateCarId: null,
+                    calibratePoints: JSON.parse(
+                        localStorage.getItem("calibratePoints") || "[]",
+                    ),
                 },
                 created() {
                     window.addEventListener("resize", this.resize);
@@ -242,19 +342,37 @@
                     window.removeEventListener("wheel", this.onwheel);
                     window.removeEventListener("mousedown", this.draggable);
                 },
+                watch: {
+                    calibratePoints: {
+                        deep: true,
+                        handler(v) {
+                            localStorage.setItem(
+                                "calibratePoints",
+                                JSON.stringify(v),
+                            );
+                        },
+                    },
+                },
                 computed: {
+                    effectiveUid() {
+                        if (this.calibrate && this.calibrateCarId) {
+                            return this.calibrateCarId;
+                        }
+                        return this.uid;
+                    },
                     player() {
                         // Player Car offset from map middle
-                        if (this.cars[uid]) {
+                        const id = this.effectiveUid;
+                        if (this.cars[id]) {
                             return {
                                 x:
-                                    (this.cars[uid].x / factorx + offsetx) *
+                                    (this.cars[id].x / factorx + offsetx) *
                                     this.viewz,
                                 y:
-                                    (this.cars[uid].y / factory + offsety) *
+                                    (this.cars[id].y / factory + offsety) *
                                     this.viewz,
-                                d: this.cars[uid].d,
-                                s: this.cars[uid].s,
+                                d: this.cars[id].d,
+                                s: this.cars[id].s,
                             };
                         } else {
                             return { x: 0, y: 0 };
@@ -274,6 +392,66 @@
                         return {
                             "background-position": `${x}px ${y}px`,
                             "background-size": `${imagex * this.viewz}px`,
+                        };
+                    },
+                    bgOrigin() {
+                        // top-left of the map image in screen coords
+                        return {
+                            x:
+                                this.viewx +
+                                this.middlex -
+                                (imagex * this.viewz) / 2 +
+                                this.player.x,
+                            y:
+                                this.viewy +
+                                this.middley -
+                                (imagey * this.viewz) / 2 +
+                                this.player.y,
+                        };
+                    },
+                    calibrateFit() {
+                        const pts = this.calibratePoints;
+                        if (pts.length < 2) return null;
+                        const fit = (key) => {
+                            // img = a*g + b, fit a,b
+                            const n = pts.length;
+                            let sg = 0,
+                                si = 0,
+                                sgg = 0,
+                                sgi = 0;
+                            for (const p of pts) {
+                                const g = p["g" + key];
+                                const im = p["i" + key];
+                                sg += g;
+                                si += im;
+                                sgg += g * g;
+                                sgi += g * im;
+                            }
+                            const denom = n * sgg - sg * sg;
+                            const a = (n * sgi - sg * si) / denom;
+                            const b = (si - a * sg) / n;
+                            // img = -g/factor + (image/2 - offset)
+                            const factor = -1 / a;
+                            const imageSize = key === "x" ? imagex : imagey;
+                            const offset = imageSize / 2 - b;
+                            // residuals
+                            let sse = 0;
+                            for (const p of pts) {
+                                const pred = a * p["g" + key] + b;
+                                sse += (pred - p["i" + key]) ** 2;
+                            }
+                            return { factor, offset, sse };
+                        };
+                        const fx = fit("x");
+                        const fy = fit("y");
+                        return {
+                            factorx: fx.factor,
+                            offsetx: fx.offset,
+                            factory: fy.factor,
+                            offsety: fy.offset,
+                            rms: Math.sqrt(
+                                (fx.sse + fy.sse) / (2 * pts.length),
+                            ),
                         };
                     },
                     arrows() {
@@ -319,6 +497,17 @@
                         this.middley = window.innerHeight / 2;
                     },
                     draggable(e) {
+                        if (
+                            e.target.closest &&
+                            e.target.closest("#calibrate")
+                        ) {
+                            return;
+                        }
+                        if (this.calibrate && e.shiftKey) {
+                            e.preventDefault();
+                            this.recordCalibration(e);
+                            return;
+                        }
                         e.preventDefault();
                         previousEvent = e;
                         document.addEventListener("mousemove", this.drag);
@@ -336,6 +525,35 @@
                             this.removeDrag,
                         );
                         document.removeEventListener("mousemove", this.drag);
+                    },
+                    recordCalibration(e) {
+                        const car = this.cars[this.effectiveUid];
+                        if (!car) {
+                            alert(
+                                "No telemetry — pick a car in the calibrate panel.",
+                            );
+                            return;
+                        }
+                        const o = this.bgOrigin;
+                        const ix = (e.pageX - o.x) / this.viewz;
+                        const iy = (e.pageY - o.y) / this.viewz;
+                        this.calibratePoints.push({
+                            gx: car.x,
+                            gy: car.y,
+                            ix,
+                            iy,
+                        });
+                        localStorage.setItem(
+                            "calibratePoints",
+                            JSON.stringify(this.calibratePoints),
+                        );
+                    },
+                    calibrateDotStyle(p) {
+                        const o = this.bgOrigin;
+                        return {
+                            left: `${o.x + p.ix * this.viewz}px`,
+                            top: `${o.y + p.iy * this.viewz}px`,
+                        };
                     },
                     onwheel(e) {
                         var deltaY = 0;
