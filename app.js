@@ -102,6 +102,12 @@ let updates = {};
 const salt = "forzaisafunvideogame";
 
 function haship(ip) {
+  if (
+    ip.startsWith("192.168.") ||
+    ip.startsWith("::ffff:192.168.") ||
+    ip.startsWith("2402:1060:2343:")
+  )
+    return "local";
   return crypto
     .createHash("md5")
     .update(salt + ip)
@@ -150,7 +156,7 @@ server.on("listening", () => {
 
 //Start servers
 server.bind(6666);
-app.listen(8000);
+app.listen(6666);
 
 // Sent data on regular interval
 setInterval(() => {
