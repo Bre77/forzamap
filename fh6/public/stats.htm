@@ -1,0 +1,114 @@
+<html>
+    <head>
+        <title>Forza Horizon 5 Stats</title>
+        <meta name="description" content="Realtime stats for Forza Horizon 5">
+        <meta name="keywords" content="Forza, Horizon, FH5, Map, Forza Horizon 5, telemetry">
+        <meta name="author" content="Brett Adams">
+        <script src="/uid.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-EW032TKLN6"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-EW032TKLN6');
+        </script>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: black;
+                color: #FFF;
+                font-family: monospace;
+            }
+            a, a:hover, a:visited, a:active {
+                color: inherit;
+            }
+            #quad {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                height: 100%;
+                width: 100%
+            }
+            .quad {
+                display: flex;
+                flex-direction: column;
+                flex-basis: 50%;
+                justify-content: center;
+                align-content: center;
+                text-align: center;
+                font-size: 5em;
+                text-shadow: -3px 0 black, 0 3px black, 3px 0 black, 0 -3px black;
+            }
+
+        </style>
+
+    </head>
+    <body>
+        <div id="app">
+            <select v-model="uid" v-if="!(uid in cars)">
+                <option v-for="value,id in cars" :value="id">{{id}}</option>
+            </select>
+            <div id="quad" v-if="uid in cars">
+                <div v-for="s in slip" class="quad" :style="s.style">
+                    
+                    {{s.value}}%
+                </div>
+            </div>
+        </div>
+        <script>
+
+            const app = new Vue({
+                el: '#app',
+                data: {
+                    uid: uid,
+                    cars: {},
+                    quads: ["FrontLeft","FrontRight","RearLeft","RearRight"]
+                },
+                created() {
+                    const stream = new EventSource("/data2")
+                    stream.onmessage = (ev)=>{
+                        try {
+                            data = JSON.parse(ev.data)
+                        }
+                        catch(err) {
+                            return
+                        }
+                        for (let id in data){
+                            this.$set(this.cars,id,data[id])
+                        }
+                    };
+                },
+                destroyed() {
+                },
+                computed: {
+                    slip(){
+                        output = [{},{},{},{}]
+                        for(let q in this.quads){
+                            let slip = this.cars[this.uid][`TireCombinedSlip${this.quads[q]}`]
+                            output[q].value = Math.round(slip*100)
+                            let normalised = Math.max(Math.min((slip-1)*255,255),0)
+                            output[q].style = {"background-color":`rgb(${Math.max(Math.min((slip-1)*255,255),0)},${255-Math.max(Math.min(slip*255,255),0)},0)`}
+                            /*if (slip < 0.1){
+                                output[q].style = {"background-color":"green"}
+                            } else if (slip < 0.2){
+                                output[q].style = {"background-color":"blue"}
+                            } else if(slip < 0.5){
+                                output[q].style = {"background-color":"yellow"}
+                            } else if(slip < 1){
+                                output[q].style = {"background-color":"orange"}
+                            } else {
+                                output[q].style = {"background-color":"red"}
+                            }*/
+                        }
+                        return output
+                    }
+                },
+                methods: {
+
+                }
+            })
+        </script>
+    </body>
+</html>

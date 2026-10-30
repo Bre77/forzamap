@@ -1,1 +1,4 @@
 node_modules
+deploy.sh
+deploy-nas.sh
+.DS_Store

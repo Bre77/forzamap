@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Forza Horizon Live Map</title>
+        <meta
+            name="description"
+            content="Realtime telemetry maps for Forza Horizon 5 and Forza Horizon 6"
+        />
+        <meta
+            name="keywords"
+            content="Forza, Horizon, FH5, FH6, Map, Forza Horizon 5, Forza Horizon 6, telemetry"
+        />
+        <meta name="author" content="Brett Adams" />
+        <script
+            async
+            src="https://www.googletagmanager.com/gtag/js?id=G-EW032TKLN6"
+        ></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() {
+                dataLayer.push(arguments);
+            }
+            gtag("js", new Date());
+            gtag("config", "G-EW032TKLN6");
+        </script>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 2em 1em;
+                background-color: black;
+                color: white;
+                font-family: "Lucida Sans", "Lucida Sans Regular",
+                    "Lucida Grande", "Lucida Sans Unicode", Geneva, Verdana,
+                    sans-serif;
+            }
+            h1 {
+                margin: 0 0 0.25em;
+                font-size: 2em;
+                text-align: center;
+            }
+            p {
+                margin: 0 0 2em;
+                color: #bbb;
+                text-align: center;
+                max-width: 36em;
+            }
+            #games {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 1.5em;
+                justify-content: center;
+            }
+            .game {
+                display: block;
+                width: 18em;
+                padding: 1.5em;
+                border: 2px solid #444;
+                text-decoration: none;
+                color: inherit;
+                background-color: rgba(255, 255, 255, 0.05);
+                transition:
+                    border-color 0.15s,
+                    background-color 0.15s;
+            }
+            .game:hover,
+            .game:focus-visible {
+                border-color: white;
+                background-color: rgba(255, 255, 255, 0.12);
+            }
+            .game .tag {
+                font-family: monospace;
+                font-size: 3em;
+                font-weight: bold;
+            }
+            .game .name {
+                font-size: 1.1em;
+                margin: 0.25em 0 1em;
+            }
+            .game .config {
+                font-family: monospace;
+                color: #bbb;
+                line-height: 1.5;
+            }
+            #fh5 .tag {
+                color: #ff4fa3;
+            }
+            #fh6 .tag {
+                color: #4fc3ff;
+            }
+            footer {
+                margin-top: 2.5em;
+                font-family: monospace;
+                color: #888;
+            }
+            footer a {
+                color: inherit;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Forza Horizon Live Map</h1>
+        <p>
+            See yourself and other players on a realtime map using the game's
+            Data Out telemetry. Pick your game:
+        </p>
+        <div id="games">
+            <a class="game" id="fh6" href="//fh6.ba.id.au/">
+                <div class="tag">FH6</div>
+                <div class="name">Forza Horizon 6</div>
+                <div class="config">
+                    IP&nbsp;&nbsp;&nbsp;fh6.ba.id.au<br />
+                    Port&nbsp;6666
+                </div>
+            </a>
+            <a class="game" id="fh5" href="//fh5.ba.id.au/">
+                <div class="tag">FH5</div>
+                <div class="name">Forza Horizon 5</div>
+                <div class="config">
+                    IP&nbsp;&nbsp;&nbsp;fh5.ba.id.au<br />
+                    Port&nbsp;5555
+                </div>
+            </a>
+        </div>
+        <footer><a href="https://bre77.au">Created by @Bre77</a></footer>
+    </body>
+</html>
