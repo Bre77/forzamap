@@ -4,7 +4,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-const PORT = Number(process.env.PORT) || 8080;
+const PORT = Number(process.env.PORT) || 5566;
 const page = fs.readFileSync(path.join(__dirname, "public", "index.htm"));
 
 http

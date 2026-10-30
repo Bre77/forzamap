@@ -22,6 +22,6 @@ COPY start.js .
 ENV NODE_ENV=production
 USER node
 # FH6 on 6666, FH5 on 5555 (each app serves HTTP and receives UDP telemetry on the same port)
-# Selector on 8080 (HTTP only, override with PORT)
-EXPOSE 6666/tcp 6666/udp 5555/tcp 5555/udp 8080/tcp
+# Selector on 5566 (HTTP only, override with PORT)
+EXPOSE 6666/tcp 6666/udp 5555/tcp 5555/udp 5566/tcp
 CMD ["node", "start.js"]
